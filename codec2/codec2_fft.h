@@ -31,7 +31,7 @@
 #include "defines.h"
 #include "comp.h"
 
-#ifndef ARM_MATH_CM4
+#if !defined ARM_MATH_CM4 && !defined ARM_MATH_CM33
     #define USE_KISS_FFT
 #endif
 // #define USE_KISS_FFT
