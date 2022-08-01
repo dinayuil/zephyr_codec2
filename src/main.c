@@ -16,15 +16,19 @@
 #define AUDIO_BUF_U16_SIZE 24000
 #define RX_BUF_SIZE 1000
 
+/* Choose role */
+#define TX_BOARD
+// #define RX_BOARD
+
 /* Register Log */
 LOG_MODULE_REGISTER(codec, LOG_LEVEL_DBG);
 
 /* UART peripheral*/
-/* UART2 TX 24, RX 23 */
+/* UART2 TX 24 (TX), RX 23 (RX), used for audio transfer between board and PC*/
 #define UART2_DEVICE_NODE DT_NODELABEL(uart2)
 static const struct device *uart2_dev = DEVICE_DT_GET(UART2_DEVICE_NODE);
 
-/* UART1 TX 0 (D4), RX 1 (D5) */
+/* UART1 TX 0 (D4), RX 1 (D5), used for codec2 bits transfer between boards */
 #define UART1_DEVICE_NODE DT_NODELABEL(uart1)
 static const struct device *uart1_dev = DEVICE_DT_GET(UART1_DEVICE_NODE);
 
@@ -39,16 +43,17 @@ static int audioBufPos = 0;
 
 /* RX control */
 volatile int rxMsgCount = 0;
+volatile bool uart1RxFinished = false;
 
 /* TX control */
-volatile bool txFinished = false;
+volatile bool uart2TxFinished = false;
 
 void uart2_cb(const struct device *dev, struct uart_event *evt, void *user_data)
 {
 	switch(evt->type) {
 	case UART_TX_DONE:
         LOG_INF("Tx sent %d bytes\n", evt->data.tx.len);
-		txFinished = true;
+		uart2TxFinished = true;
         break;
 
     case UART_TX_ABORTED:
@@ -99,14 +104,11 @@ void uart1_cb(const struct device *dev, struct uart_event *evt, void *user_data)
 
     case UART_RX_RDY:
         printk("UART1 received data %d bytes\n", evt->data.rx.len);
-		for(int i = 0; i < evt->data.rx.len; i++) {
-			printk("%c", evt->data.rx.buf[i]);
-		}
-		printk("\n");
+		uart1RxFinished = true;
         break;
+
     case UART_RX_BUF_REQUEST:
 		LOG_INF("Buffer request\n");
-
 		break;
     case UART_RX_BUF_RELEASED:
 		LOG_INF("Buffer released\n");
@@ -125,6 +127,7 @@ void main(void)
 {
 	int err = 0;
 	
+    /* Initialise Codec 2 */
 	struct CODEC2 *c2;
 
 	c2 = codec2_create(CODEC2_MODE_1200);
@@ -132,13 +135,16 @@ void main(void)
 	int nbit = codec2_bits_per_frame(c2);
   	int nbyte = (nbit + 7) / 8;
 
-	uint16_t audio_frame_buf[320];
-	uint8_t encoded_audio_bits[nbyte];
+    printk("==== Codec 2 config info\n ====");
+	printk("number of PCM samples to encode for one frame (nsam): %d\n", nsam);
+	printk("number of bits after encoding (nbit): %d\n", nbit);
+	printk("number of bytes after encoding (nbyte) %d\n", nbyte);
+    printk("================================");
 
-	printk("nsam %d\n", nsam);
-	printk("nbit %d\n", nbit);
-	printk("nbyte %d\n", nbyte);
+	int encodedSize = AUDIO_BUF_U16_SIZE/nsam * nbyte;
+	uint8_t encodedAudio[encodedSize];
 
+    /* Verify UART is ready*/
 	if (!device_is_ready(uart2_dev)) {
 		LOG_WRN("UART2 device not found!");
 		return;
@@ -149,10 +155,7 @@ void main(void)
 		return;
 	}
 
-	LOG_DBG("&rx_buf1: %p\n", &rx_buf1);
-	LOG_DBG("&rx_buf2: %p\n", &rx_buf2);
-
-	/* configure interrupt and callback to receive data */
+	/* Configure callback for UART tx and rx */
 	err = uart_callback_set(uart2_dev, uart2_cb, NULL);
 	if(err) {
 		LOG_ERR("err from uart_callback_set for UART2, errno: %d.\n", err);
@@ -163,62 +166,92 @@ void main(void)
 		LOG_ERR("err from uart_callback_set for UART1, errno: %d.\n", err);
 	}
 
-	// tx test
-	// char tx_buf[12];
-	// snprintk(tx_buf, 12, "abcdefghij\n");
-	// err = uart_tx(uart1_dev, tx_buf, strlen(tx_buf), SYS_FOREVER_MS);
-	// if(err) {
-	// 	LOG_ERR("err from uart_tx, errno: %d.\n", err);
-	// }
+#ifdef TX_BOARD
 
-	// rx test for UART1
-	char rx_buf_uart1[11];
-	err = uart_rx_enable(uart1_dev, rx_buf_uart1, 11, SYS_FOREVER_MS);
-	if(err) {
-		LOG_ERR("err from uart_rx_enable_u16, errno: %d.\n", err);
-	}
+	LOG_DBG("&rx_buf1: %p\n", &rx_buf1);
+	LOG_DBG("&rx_buf2: %p\n", &rx_buf2);
 
+    /* Receive original audio from PC */
 	err = uart_rx_enable(uart2_dev, rx_buf1, RX_BUF_SIZE, SYS_FOREVER_MS);
 	if(err) {
-		LOG_ERR("err from uart_rx_enable_u16, errno: %d.\n", err);
+		LOG_ERR("err from uart_rx_enable for UART2, errno: %d.\n", err);
 	}
 
+    // receive complete, turn off UART2 rx
 	while(1) {
 		if(rxMsgCount == AUDIO_BUF_U16_SIZE/RX_BUF_SIZE * 2 + 1) {
 			err = uart_rx_disable(uart2_dev);
 			if(err) {
-				LOG_ERR("err from uart_rx_disable, errno: %d.\n", err);
+				LOG_ERR("err from uart_rx_disable for UART2, errno: %d.\n", err);
 			}
 			break;
 		}
 	}
 
 	printk("Received.\n");
-	printk("Start processing audio. \n");
 
-	for(int i = 0; i < AUDIO_BUF_U16_SIZE; i+=320) {
-		memcpy(audio_frame_buf, &audio_buf[i], 640);
-		codec2_encode(c2, encoded_audio_bits, audio_frame_buf);
+    /* Encode audio*/
+	printk("Start encoding audio.\n");
+    // uint16_t audio_frame_buf[nsam];
+	// uint8_t encoded_audio_bits[nbyte];
+    audioBufPos = 0;
+	for(int i = 0; i < encodedSize; i+=nbyte) {
+		// memcpy(audio_frame_buf, &audio_buf[i], nsam*2);
+		codec2_encode(c2, &encodedAudio[i], &audio_buf[audioBufPos]);
 		// memset(audio_frame_buf, 0, 640);
-		codec2_decode(c2, audio_frame_buf, encoded_audio_bits);
-		memcpy(&audio_buf[i], audio_frame_buf, 640);
+		// uart_tx(uart1_dev, &encodedAudio[i], nbyte, SYS_FOREVER_MS);
+		// codec2_decode(c2, audio_frame_buf, encoded_audio_bits);
+		// memcpy(&audio_buf[i], audio_frame_buf, 640);
+        audioBufPos += nsam;
+	}
+    printk("Encoding finished.\n");
+
+    /* Send codec2 bits to another board */
+    uart_tx(uart1_dev, encodedAudio, encodedSize, SYS_FOREVER_MS);
+
+#endif
+
+#ifdef RX_BOARD
+
+	/* Receive encoded audio bits */
+	// int encodedSize = AUDIO_BUF_U16_SIZE/nsam * nbyte;
+	// uint8_t encodedAudio[encodedSize];
+
+	err = uart_rx_enable(uart1_dev, encodedAudio, encodedSize, SYS_FOREVER_MS);
+    // wait until rx finished
+	while(1) {
+		if(uart1RxFinished) {
+			break;
+		}
+	}
+    
+	/* Decode */
+	audioBufPos = 0;
+	for(int i = 0; i < encodedSize; i+=nbyte) {
+		codec2_decode(c2, &audio_buf[audioBufPos], &encodedAudio[i]);
+        audioBufPos += nsam;
 	}
 
 	k_sleep(K_MSEC(1000));
 
+    /* Send decoded audio to PC */
 	printk("Start tx.\n");
-	for(int i = 0; i < 48000; i+=1000) {
+	for(int i = 0; i < AUDIO_BUF_U16_SIZE*2; i+=1000) {
 		printk("i = %d\n", i);
 		err = uart_tx(uart2_dev, (uint8_t *)audio_buf+i, 1000, SYS_FOREVER_MS);
 		if(err) {
 			LOG_ERR("err from uart_tx, errno: %d.\n", err);
 		}
+        // wait until this tx finished, then start next tx
 		while(1) {
-			if(txFinished) {
-				txFinished = false;
+			if(uart2TxFinished) {
+				uart2TxFinished = false;
 				break;
 			}
 		}
 	}
 	printk("tx finished.\n");
+
+#endif
+
 }
