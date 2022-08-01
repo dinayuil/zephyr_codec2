@@ -20,8 +20,13 @@
 LOG_MODULE_REGISTER(codec, LOG_LEVEL_DBG);
 
 /* UART peripheral*/
-#define UART_DEVICE_NODE DT_NODELABEL(uart2)
-static const struct device *uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
+/* UART2 TX 24, RX 23 */
+#define UART2_DEVICE_NODE DT_NODELABEL(uart2)
+static const struct device *uart2_dev = DEVICE_DT_GET(UART2_DEVICE_NODE);
+
+/* UART1 TX 0, RX 1 */
+#define UART1_DEVICE_NODE DT_NODELABEL(uart1)
+static const struct device *uart1_dev = DEVICE_DT_GET(UART1_DEVICE_NODE);
 
 /* receive buffer used in UART callback */
 static uint8_t rx_buf1[RX_BUF_SIZE];
@@ -38,7 +43,7 @@ volatile int rxMsgCount = 0;
 /* TX control */
 volatile bool txFinished = false;
 
-void serial_cb(const struct device *dev, struct uart_event *evt, void *user_data)
+void uart2_cb(const struct device *dev, struct uart_event *evt, void *user_data)
 {
 	switch(evt->type) {
 	case UART_TX_DONE:
@@ -61,10 +66,10 @@ void serial_cb(const struct device *dev, struct uart_event *evt, void *user_data
     case UART_RX_BUF_REQUEST:
 		LOG_INF("Buffer request\n");
 		if(inUseBuffer == 1) {
-			uart_rx_buf_rsp(uart_dev, rx_buf2, RX_BUF_SIZE);
+			uart_rx_buf_rsp(uart2_dev, rx_buf2, RX_BUF_SIZE);
 			inUseBuffer = 2;
 		} else {
-			uart_rx_buf_rsp(uart_dev, rx_buf1, RX_BUF_SIZE);
+			uart_rx_buf_rsp(uart2_dev, rx_buf1, RX_BUF_SIZE);
 			inUseBuffer = 1;
 		}
 		rxMsgCount++;
@@ -80,6 +85,41 @@ void serial_cb(const struct device *dev, struct uart_event *evt, void *user_data
         break;
 	}
 }
+
+void uart1_cb(const struct device *dev, struct uart_event *evt, void *user_data)
+{
+	switch(evt->type) {
+	case UART_TX_DONE:
+        LOG_INF("UART1 sent %d bytes\n", evt->data.tx.len);
+        break;
+
+    case UART_TX_ABORTED:
+        LOG_INF("Tx aborted\n");
+        break;
+
+    case UART_RX_RDY:
+        LOG_INF("UART1 received data %d bytes\n", evt->data.rx.len);
+		for(int i = 0; i < evt->data.rx.len; i++) {
+			printk("%c", evt->data.rx.buf[i]);
+		}
+		printk("\n");
+        break;
+    case UART_RX_BUF_REQUEST:
+		LOG_INF("Buffer request\n");
+
+		break;
+    case UART_RX_BUF_RELEASED:
+		LOG_INF("Buffer released\n");
+		break;
+    case UART_RX_DISABLED:
+		LOG_INF("Buffer disabled\n");
+		break;
+    case UART_RX_STOPPED:
+		LOG_INF("Buffer stopped\n");
+        break;
+	}
+}
+
 
 void main(void)
 {
@@ -99,8 +139,13 @@ void main(void)
 	printk("nbit %d\n", nbit);
 	printk("nbyte %d\n", nbyte);
 
-	if (!device_is_ready(uart_dev)) {
-		LOG_WRN("UART device not found!");
+	if (!device_is_ready(uart2_dev)) {
+		LOG_WRN("UART2 device not found!");
+		return;
+	}
+
+	if (!device_is_ready(uart1_dev)) {
+		LOG_WRN("UART1 device not found!");
 		return;
 	}
 
@@ -108,28 +153,39 @@ void main(void)
 	LOG_DBG("&rx_buf2: %p\n", &rx_buf2);
 
 	/* configure interrupt and callback to receive data */
-	err = uart_callback_set(uart_dev, serial_cb, NULL);
+	err = uart_callback_set(uart2_dev, uart2_cb, NULL);
 	if(err) {
-		LOG_ERR("err from uart_callback_set, errno: %d.\n", err);
+		LOG_ERR("err from uart_callback_set for UART2, errno: %d.\n", err);
+	}
+
+	err = uart_callback_set(uart1_dev, uart1_cb, NULL);
+	if(err) {
+		LOG_ERR("err from uart_callback_set for UART1, errno: %d.\n", err);
 	}
 
 	// tx test
-	// char tx_buf[10];
-	// snprintk(tx_buf, 10, "Hello!\n");
-	// err = uart_tx(uart_dev, tx_buf, strlen(tx_buf), SYS_FOREVER_MS);
-	// if(err) {
-	// 	LOG_ERR("err from uart_tx, errno: %d.\n", err);
-	// }
+	char tx_buf[15];
+	snprintk(tx_buf, 15, "Hello UART1!\n");
+	err = uart_tx(uart1_dev, tx_buf, strlen(tx_buf), SYS_FOREVER_MS);
+	if(err) {
+		LOG_ERR("err from uart_tx, errno: %d.\n", err);
+	}
 
+	// rx test for UART1
+	char rx_buf_uart1[10];
+	err = uart_rx_enable(uart1_dev, rx_buf_uart1, 10, SYS_FOREVER_MS);
+	if(err) {
+		LOG_ERR("err from uart_rx_enable_u16, errno: %d.\n", err);
+	}
 
-	err = uart_rx_enable(uart_dev, rx_buf1, RX_BUF_SIZE, SYS_FOREVER_MS);
+	err = uart_rx_enable(uart2_dev, rx_buf1, RX_BUF_SIZE, SYS_FOREVER_MS);
 	if(err) {
 		LOG_ERR("err from uart_rx_enable_u16, errno: %d.\n", err);
 	}
 
 	while(1) {
 		if(rxMsgCount == AUDIO_BUF_U16_SIZE/RX_BUF_SIZE * 2 + 1) {
-			err = uart_rx_disable(uart_dev);
+			err = uart_rx_disable(uart2_dev);
 			if(err) {
 				LOG_ERR("err from uart_rx_disable, errno: %d.\n", err);
 			}
@@ -153,7 +209,7 @@ void main(void)
 	printk("Start tx.\n");
 	for(int i = 0; i < 48000; i+=1000) {
 		printk("i = %d\n", i);
-		err = uart_tx(uart_dev, (uint8_t *)audio_buf+i, 1000, SYS_FOREVER_MS);
+		err = uart_tx(uart2_dev, (uint8_t *)audio_buf+i, 1000, SYS_FOREVER_MS);
 		if(err) {
 			LOG_ERR("err from uart_tx, errno: %d.\n", err);
 		}
