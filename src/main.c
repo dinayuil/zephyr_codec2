@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(codec, LOG_LEVEL_DBG);
 #define UART2_DEVICE_NODE DT_NODELABEL(uart2)
 static const struct device *uart2_dev = DEVICE_DT_GET(UART2_DEVICE_NODE);
 
-/* UART1 TX 0, RX 1 */
+/* UART1 TX 0 (D4), RX 1 (D5) */
 #define UART1_DEVICE_NODE DT_NODELABEL(uart1)
 static const struct device *uart1_dev = DEVICE_DT_GET(UART1_DEVICE_NODE);
 
@@ -90,7 +90,7 @@ void uart1_cb(const struct device *dev, struct uart_event *evt, void *user_data)
 {
 	switch(evt->type) {
 	case UART_TX_DONE:
-        LOG_INF("UART1 sent %d bytes\n", evt->data.tx.len);
+        printk("UART1 sent %d bytes\n", evt->data.tx.len);
         break;
 
     case UART_TX_ABORTED:
@@ -98,7 +98,7 @@ void uart1_cb(const struct device *dev, struct uart_event *evt, void *user_data)
         break;
 
     case UART_RX_RDY:
-        LOG_INF("UART1 received data %d bytes\n", evt->data.rx.len);
+        printk("UART1 received data %d bytes\n", evt->data.rx.len);
 		for(int i = 0; i < evt->data.rx.len; i++) {
 			printk("%c", evt->data.rx.buf[i]);
 		}
@@ -164,16 +164,16 @@ void main(void)
 	}
 
 	// tx test
-	char tx_buf[15];
-	snprintk(tx_buf, 15, "Hello UART1!\n");
-	err = uart_tx(uart1_dev, tx_buf, strlen(tx_buf), SYS_FOREVER_MS);
-	if(err) {
-		LOG_ERR("err from uart_tx, errno: %d.\n", err);
-	}
+	// char tx_buf[12];
+	// snprintk(tx_buf, 12, "abcdefghij\n");
+	// err = uart_tx(uart1_dev, tx_buf, strlen(tx_buf), SYS_FOREVER_MS);
+	// if(err) {
+	// 	LOG_ERR("err from uart_tx, errno: %d.\n", err);
+	// }
 
 	// rx test for UART1
-	char rx_buf_uart1[10];
-	err = uart_rx_enable(uart1_dev, rx_buf_uart1, 10, SYS_FOREVER_MS);
+	char rx_buf_uart1[11];
+	err = uart_rx_enable(uart1_dev, rx_buf_uart1, 11, SYS_FOREVER_MS);
 	if(err) {
 		LOG_ERR("err from uart_rx_enable_u16, errno: %d.\n", err);
 	}
