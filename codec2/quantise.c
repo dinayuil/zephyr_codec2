@@ -68,7 +68,7 @@ int lspd_bits(int i) {
     return lsp_cbd[i].log2m;
 }
 
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
 int mel_bits(int i) {
     return mel_cb[i].log2m;
 }
@@ -541,7 +541,7 @@ void lspjvm_quantise(float *x, float *xq, int order)
 }
 
 
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
 /* simple (non mbest) 6th order LSP MEL VQ quantiser.  Returns MSE of result */
 
 float lspmelvq_quantise(float *x, float *xq, int order)
@@ -885,7 +885,7 @@ void aks_to_M2(
 
   float Pw[FFT_ENC/2];
 
-#ifndef ARM_MATH_CM4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
   for(i=0; i<FFT_ENC/2; i++) {
     Pw[i] = 1.0/(Aw[i].real*Aw[i].real + Aw[i].imag*Aw[i].imag + 1E-6);
   }
@@ -1276,7 +1276,7 @@ void decode_lsps_scalar(float lsp[], int indexes[], int order)
 }
 
 
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
 
 /*---------------------------------------------------------------------------*\
 

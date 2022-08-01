@@ -70,12 +70,12 @@ void codec2_encode_1300(struct CODEC2 *c2, unsigned char * bits, short speech[])
 void codec2_decode_1300(struct CODEC2 *c2, short speech[], const unsigned char * bits, float ber_est);
 void codec2_encode_1200(struct CODEC2 *c2, unsigned char * bits, short speech[]);
 void codec2_decode_1200(struct CODEC2 *c2, short speech[], const unsigned char * bits);
-void codec2_encode_700(struct CODEC2 *c2, unsigned char * bits, short speech[]);
-void codec2_decode_700(struct CODEC2 *c2, short speech[], const unsigned char * bits);
-void codec2_encode_700b(struct CODEC2 *c2, unsigned char * bits, short speech[]);
-void codec2_decode_700b(struct CODEC2 *c2, short speech[], const unsigned char * bits);
-void codec2_encode_700c(struct CODEC2 *c2, unsigned char * bits, short speech[]);
-void codec2_decode_700c(struct CODEC2 *c2, short speech[], const unsigned char * bits);
+// void codec2_encode_700(struct CODEC2 *c2, unsigned char * bits, short speech[]);
+// void codec2_decode_700(struct CODEC2 *c2, short speech[], const unsigned char * bits);
+// void codec2_encode_700b(struct CODEC2 *c2, unsigned char * bits, short speech[]);
+// void codec2_decode_700b(struct CODEC2 *c2, short speech[], const unsigned char * bits);
+// void codec2_encode_700c(struct CODEC2 *c2, unsigned char * bits, short speech[]);
+// void codec2_decode_700c(struct CODEC2 *c2, short speech[], const unsigned char * bits);
 static void ear_protection(float in_out[], int n);
 
 /*---------------------------------------------------------------------------*\
@@ -163,7 +163,7 @@ struct CODEC2 * codec2_create(int mode)
 
     c2->softdec = NULL;
 
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
     /* newamp1 initialisation */
 
     if (c2->mode == CODEC2_MODE_700C) {
@@ -290,7 +290,7 @@ void codec2_encode(struct CODEC2 *c2, unsigned char *bits, short speech[])
 	codec2_encode_1300(c2, bits, speech);
     if (c2->mode == CODEC2_MODE_1200)
 	codec2_encode_1200(c2, bits, speech);
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
     if (c2->mode == CODEC2_MODE_700)
 	codec2_encode_700(c2, bits, speech);
     if (c2->mode == CODEC2_MODE_700B)
@@ -322,7 +322,7 @@ void codec2_decode_ber(struct CODEC2 *c2, short speech[], const unsigned char *b
  	codec2_decode_1300(c2, speech, bits, ber_est);
     if (c2->mode == CODEC2_MODE_1200)
  	codec2_decode_1200(c2, speech, bits);
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
     if (c2->mode == CODEC2_MODE_700)
  	codec2_decode_700(c2, speech, bits);
     if (c2->mode == CODEC2_MODE_700B)
@@ -1346,565 +1346,565 @@ void codec2_decode_1200(struct CODEC2 *c2, short speech[], const unsigned char *
 }
 
 
-#ifndef CORTEX_M4
-/*---------------------------------------------------------------------------*\
+// #if !defined(CORTEX_M4) && !defined(CORTEX_M33)
+// /*---------------------------------------------------------------------------*\
 
-  FUNCTION....: codec2_encode_700
-  AUTHOR......: David Rowe
-  DATE CREATED: April 2015
+//   FUNCTION....: codec2_encode_700
+//   AUTHOR......: David Rowe
+//   DATE CREATED: April 2015
 
-  Encodes 320 speech samples (40ms of speech) into 28 bits.
+//   Encodes 320 speech samples (40ms of speech) into 28 bits.
 
-  The codec2 algorithm actually operates internally on 10ms (80
-  sample) frames, so we run the encoding algorithm four times:
+//   The codec2 algorithm actually operates internally on 10ms (80
+//   sample) frames, so we run the encoding algorithm four times:
 
-  frame 0: nothing
-  frame 1: nothing
-  frame 2: nothing
-  frame 3: voicing bit, scalar Wo and E, 17 bit LSP MEL scalar, 2 spare
+//   frame 0: nothing
+//   frame 1: nothing
+//   frame 2: nothing
+//   frame 3: voicing bit, scalar Wo and E, 17 bit LSP MEL scalar, 2 spare
 
-  The bit allocation is:
+//   The bit allocation is:
 
-    Parameter                      frames 1-3   frame 4   Total
-    -----------------------------------------------------------
-    Harmonic magnitudes (LSPs)          0         17        17
-    Energy                              0          3         3
-    log Wo                              0          5         5
-    Voicing                             0          1         1
-    spare                               0          2         2
-    TOTAL                               0         28        28
+//     Parameter                      frames 1-3   frame 4   Total
+//     -----------------------------------------------------------
+//     Harmonic magnitudes (LSPs)          0         17        17
+//     Energy                              0          3         3
+//     log Wo                              0          5         5
+//     Voicing                             0          1         1
+//     spare                               0          2         2
+//     TOTAL                               0         28        28
 
-\*---------------------------------------------------------------------------*/
+// \*---------------------------------------------------------------------------*/
 
-void codec2_encode_700(struct CODEC2 *c2, unsigned char * bits, short speech[])
-{
-    MODEL   model;
-    float   lsps[LPC_ORD_LOW];
-    float   mel[LPC_ORD_LOW];
-    float   ak[LPC_ORD_LOW+1];
-    float   e, f;
-    int     indexes[LPC_ORD_LOW];
-    int     Wo_index, e_index, i;
-    unsigned int nbit = 0;
-    float   bpf_out[4*N_SAMP];
-    short   bpf_speech[4*N_SAMP];
-    int     spare = 0;
+// void codec2_encode_700(struct CODEC2 *c2, unsigned char * bits, short speech[])
+// {
+//     MODEL   model;
+//     float   lsps[LPC_ORD_LOW];
+//     float   mel[LPC_ORD_LOW];
+//     float   ak[LPC_ORD_LOW+1];
+//     float   e, f;
+//     int     indexes[LPC_ORD_LOW];
+//     int     Wo_index, e_index, i;
+//     unsigned int nbit = 0;
+//     float   bpf_out[4*N_SAMP];
+//     short   bpf_speech[4*N_SAMP];
+//     int     spare = 0;
 
-    assert(c2 != NULL);
+//     assert(c2 != NULL);
 
-    memset(bits, '\0',  ((codec2_bits_per_frame(c2) + 7) / 8));
+//     memset(bits, '\0',  ((codec2_bits_per_frame(c2) + 7) / 8));
 
-    /* band pass filter */
+//     /* band pass filter */
 
-    for(i=0; i<BPF_N; i++)
-        c2->bpf_buf[i] = c2->bpf_buf[4*N_SAMP+i];
-    for(i=0; i<4*N_SAMP; i++)
-        c2->bpf_buf[BPF_N+i] = speech[i];
-    inverse_filter(&c2->bpf_buf[BPF_N], bpf, 4*N_SAMP, bpf_out, BPF_N-1);
-    for(i=0; i<4*N_SAMP; i++)
-        bpf_speech[i] = bpf_out[i];
+//     for(i=0; i<BPF_N; i++)
+//         c2->bpf_buf[i] = c2->bpf_buf[4*N_SAMP+i];
+//     for(i=0; i<4*N_SAMP; i++)
+//         c2->bpf_buf[BPF_N+i] = speech[i];
+//     inverse_filter(&c2->bpf_buf[BPF_N], bpf, 4*N_SAMP, bpf_out, BPF_N-1);
+//     for(i=0; i<4*N_SAMP; i++)
+//         bpf_speech[i] = bpf_out[i];
 
-    /* frame 1 --------------------------------------------------------*/
+//     /* frame 1 --------------------------------------------------------*/
 
-    analyse_one_frame(c2, &model, bpf_speech);
+//     analyse_one_frame(c2, &model, bpf_speech);
 
-    /* frame 2 --------------------------------------------------------*/
+//     /* frame 2 --------------------------------------------------------*/
 
-    analyse_one_frame(c2, &model, &bpf_speech[N_SAMP]);
+//     analyse_one_frame(c2, &model, &bpf_speech[N_SAMP]);
 
-    /* frame 3 --------------------------------------------------------*/
+//     /* frame 3 --------------------------------------------------------*/
 
-    analyse_one_frame(c2, &model, &bpf_speech[2*N_SAMP]);
+//     analyse_one_frame(c2, &model, &bpf_speech[2*N_SAMP]);
 
-    /* frame 4: - voicing, scalar Wo & E, scalar LSPs -----------------*/
+//     /* frame 4: - voicing, scalar Wo & E, scalar LSPs -----------------*/
 
-    analyse_one_frame(c2, &model, &bpf_speech[3*N_SAMP]);
-    pack(bits, &nbit, model.voiced, 1);
-    Wo_index = encode_log_Wo(model.Wo, 5);
-    pack_natural_or_gray(bits, &nbit, Wo_index, 5, c2->gray);
+//     analyse_one_frame(c2, &model, &bpf_speech[3*N_SAMP]);
+//     pack(bits, &nbit, model.voiced, 1);
+//     Wo_index = encode_log_Wo(model.Wo, 5);
+//     pack_natural_or_gray(bits, &nbit, Wo_index, 5, c2->gray);
 
-    e = speech_to_uq_lsps(lsps, ak, c2->Sn, c2->w, LPC_ORD_LOW);
-    e_index = encode_energy(e, 3);
-    pack_natural_or_gray(bits, &nbit, e_index, 3, c2->gray);
+//     e = speech_to_uq_lsps(lsps, ak, c2->Sn, c2->w, LPC_ORD_LOW);
+//     e_index = encode_energy(e, 3);
+//     pack_natural_or_gray(bits, &nbit, e_index, 3, c2->gray);
 
-    for(i=0; i<LPC_ORD_LOW; i++) {
-        f = (4000.0/PI)*lsps[i];
-        mel[i] = floor(2595.0*log10(1.0 + f/700.0) + 0.5);
-    }
-    encode_mels_scalar(indexes, mel, LPC_ORD_LOW);
-
-    for(i=0; i<LPC_ORD_LOW; i++) {
-        pack_natural_or_gray(bits, &nbit, indexes[i], mel_bits(i), c2->gray);
-    }
-
-    pack_natural_or_gray(bits, &nbit, spare, 2, c2->gray);
-
-    assert(nbit == (unsigned)codec2_bits_per_frame(c2));
-}
-
-
-/*---------------------------------------------------------------------------*\
-
-  FUNCTION....: codec2_decode_700
-  AUTHOR......: David Rowe
-  DATE CREATED: April 2015
-
-  Decodes frames of 28 bits into 320 samples (40ms) of speech.
-
-\*---------------------------------------------------------------------------*/
-
-void codec2_decode_700(struct CODEC2 *c2, short speech[], const unsigned char * bits)
-{
-    MODEL   model[4];
-    int     indexes[LPC_ORD_LOW];
-    float   mel[LPC_ORD_LOW];
-    float   lsps[4][LPC_ORD_LOW];
-    int     Wo_index, e_index;
-    float   e[4];
-    float   snr, f_;
-    float   ak[4][LPC_ORD_LOW+1];
-    int     i,j;
-    unsigned int nbit = 0;
-    float   weight;
-    COMP    Aw[FFT_ENC];
-
-    assert(c2 != NULL);
-
-    /* only need to zero these out due to (unused) snr calculation */
-
-    for(i=0; i<4; i++)
-	for(j=1; j<=MAX_AMP; j++)
-	    model[i].A[j] = 0.0;
-
-    /* unpack bits from channel ------------------------------------*/
-
-    model[3].voiced = unpack(bits, &nbit, 1);
-    model[0].voiced = model[1].voiced = model[2].voiced = model[3].voiced;
-
-    Wo_index = unpack_natural_or_gray(bits, &nbit, 5, c2->gray);
-    model[3].Wo = decode_log_Wo(Wo_index, 5);
-    model[3].L  = PI/model[3].Wo;
-
-    e_index = unpack_natural_or_gray(bits, &nbit, 3, c2->gray);
-    e[3] = decode_energy(e_index, 3);
-
-    for(i=0; i<LPC_ORD_LOW; i++) {
-        indexes[i] = unpack_natural_or_gray(bits, &nbit, mel_bits(i), c2->gray);
-    }
-
-    decode_mels_scalar(mel, indexes, LPC_ORD_LOW);
-    for(i=0; i<LPC_ORD_LOW; i++) {
-        f_ = 700.0*( pow(10.0, (float)mel[i]/2595.0) - 1.0);
-        lsps[3][i] = f_*(PI/4000.0);
-        //printf("lsps[3][%d]  %f\n", i, lsps[3][i]);
-    }
-
-    check_lsp_order(&lsps[3][0], LPC_ORD_LOW);
-    bw_expand_lsps(&lsps[3][0], LPC_ORD_LOW, 50.0, 100.0);
-
-    #ifdef MASK_NOT_FOR_NOW
-    /* first pass at soft decn error masking, needs further work      */
-    /* If soft dec info available expand further for low power frames */
-
-    if (c2->softdec) {
-        float e = 0.0;
-        for(i=9; i<9+17; i++)
-            e += c2->softdec[i]*c2->softdec[i];
-        e /= 6.0;
-        //fprintf(stderr, "e: %f\n", e);
-        //if (e < 0.3)
-        //      bw_expand_lsps(&lsps[3][0], LPC_ORD_LOW, 150.0, 300.0);
-    }
-    #endif
-
-    /* interpolate ------------------------------------------------*/
-
-    /* LSPs, Wo, and energy are sampled every 40ms so we interpolate
-       the 3 frames in between, then recover spectral amplitudes */
-
-    for(i=0, weight=0.25; i<3; i++, weight += 0.25) {
-	interpolate_lsp_ver2(&lsps[i][0], c2->prev_lsps_dec, &lsps[3][0], weight, LPC_ORD_LOW);
-        interp_Wo2(&model[i], &c2->prev_model_dec, &model[3], weight);
-        e[i] = interp_energy2(c2->prev_e_dec, e[3],weight);
-    }
-    for(i=0; i<4; i++) {
-	lsp_to_lpc(&lsps[i][0], &ak[i][0], LPC_ORD_LOW);
-	aks_to_M2(c2->fftr_fwd_cfg, &ak[i][0], LPC_ORD_LOW, &model[i], e[i], &snr, 0, 0,
-                  c2->lpc_pf, c2->bass_boost, c2->beta, c2->gamma, Aw);
-	apply_lpc_correction(&model[i]);
-	synthesise_one_frame(c2, &speech[N_SAMP*i], &model[i], Aw);
-    }
-
-    #ifdef DUMP
-    dump_lsp_(&lsps[3][0]);
-    dump_ak_(&ak[3][0], LPC_ORD_LOW);
-    dump_model(&model[3]);
-    if (c2->softdec)
-        dump_softdec(c2->softdec, nbit);
-    #endif
-
-    /* update memories for next frame ----------------------------*/
-
-    c2->prev_model_dec = model[3];
-    c2->prev_e_dec = e[3];
-    for(i=0; i<LPC_ORD_LOW; i++)
-	c2->prev_lsps_dec[i] = lsps[3][i];
-}
-
-
-/*---------------------------------------------------------------------------*\
-
-  FUNCTION....: codec2_encode_700b
-  AUTHOR......: David Rowe
-  DATE CREATED: August 2015
-
-  Version b of 700 bit/s codec.  After some experiments over the air I
-  wanted was unhappy with the rate 700 codec so spent a few weeks
-  trying to improve the speech quality. This version uses a wider BPF
-  and vector quantised mel-lsps.
-
-  Encodes 320 speech samples (40ms of speech) into 28 bits.
-
-  The codec2 algorithm actually operates internally on 10ms (80
-  sample) frames, so we run the encoding algorithm four times:
-
-  frame 0: nothing
-  frame 1: nothing
-  frame 2: nothing
-  frame 3: voicing bit, 5 bit scalar Wo and 3 bit E, 18 bit LSP MEL VQ,
-           1 spare
-
-  The bit allocation is:
-
-    Parameter                      frames 1-3   frame 4   Total
-    -----------------------------------------------------------
-    Harmonic magnitudes (LSPs)          0         18        18
-    Energy                              0          3         3
-    log Wo                              0          5         5
-    Voicing                             0          1         1
-    spare                               0          1         1
-    TOTAL                               0         28        28
-
-\*---------------------------------------------------------------------------*/
-
-void codec2_encode_700b(struct CODEC2 *c2, unsigned char * bits, short speech[])
-{
-    MODEL   model;
-    float   lsps[LPC_ORD_LOW];
-    float   mel[LPC_ORD_LOW];
-    float   mel_[LPC_ORD_LOW];
-    float   ak[LPC_ORD_LOW+1];
-    float   e, f;
-    int     indexes[3];
-    int     Wo_index, e_index, i;
-    unsigned int nbit = 0;
-    float   bpf_out[4*N_SAMP];
-    short   bpf_speech[4*N_SAMP];
-    int     spare = 0;
-
-    assert(c2 != NULL);
-
-    memset(bits, '\0',  ((codec2_bits_per_frame(c2) + 7) / 8));
-
-    /* band pass filter */
-
-    for(i=0; i<BPF_N; i++)
-        c2->bpf_buf[i] = c2->bpf_buf[4*N_SAMP+i];
-    for(i=0; i<4*N_SAMP; i++)
-        c2->bpf_buf[BPF_N+i] = speech[i];
-    inverse_filter(&c2->bpf_buf[BPF_N], bpfb, 4*N_SAMP, bpf_out, BPF_N-1);
-    for(i=0; i<4*N_SAMP; i++)
-        bpf_speech[i] = bpf_out[i];
-
-    /* frame 1 --------------------------------------------------------*/
-
-    analyse_one_frame(c2, &model, bpf_speech);
-
-    /* frame 2 --------------------------------------------------------*/
-
-    analyse_one_frame(c2, &model, &bpf_speech[N_SAMP]);
-
-    /* frame 3 --------------------------------------------------------*/
-
-    analyse_one_frame(c2, &model, &bpf_speech[2*N_SAMP]);
-
-    /* frame 4: - voicing, scalar Wo & E, VQ mel LSPs -----------------*/
-
-    analyse_one_frame(c2, &model, &bpf_speech[3*N_SAMP]);
-    pack(bits, &nbit, model.voiced, 1);
-    Wo_index = encode_log_Wo(model.Wo, 5);
-    pack_natural_or_gray(bits, &nbit, Wo_index, 5, c2->gray);
-
-    e = speech_to_uq_lsps(lsps, ak, c2->Sn, c2->w, LPC_ORD_LOW);
-    e_index = encode_energy(e, 3);
-    pack_natural_or_gray(bits, &nbit, e_index, 3, c2->gray);
-
-    for(i=0; i<LPC_ORD_LOW; i++) {
-        f = (4000.0/PI)*lsps[i];
-        mel[i] = floor(2595.0*log10(1.0 + f/700.0) + 0.5);
-    }
-    lspmelvq_mbest_encode(indexes, mel, mel_, LPC_ORD_LOW, 5);
-
-    for(i=0; i<3; i++) {
-        pack_natural_or_gray(bits, &nbit, indexes[i], lspmelvq_cb_bits(i), c2->gray);
-    }
-
-    pack_natural_or_gray(bits, &nbit, spare, 1, c2->gray);
-
-    assert(nbit == (unsigned)codec2_bits_per_frame(c2));
-}
-
-
-/*---------------------------------------------------------------------------*\
-
-  FUNCTION....: codec2_decode_700b
-  AUTHOR......: David Rowe
-  DATE CREATED: August 2015
-
-  Decodes frames of 28 bits into 320 samples (40ms) of speech.
-
-\*---------------------------------------------------------------------------*/
-
-void codec2_decode_700b(struct CODEC2 *c2, short speech[], const unsigned char * bits)
-{
-    MODEL   model[4];
-    int     indexes[3];
-    float   mel[LPC_ORD_LOW];
-    float   lsps[4][LPC_ORD_LOW];
-    int     Wo_index, e_index;
-    float   e[4];
-    float   snr, f_;
-    float   ak[4][LPC_ORD_LOW+1];
-    int     i,j;
-    unsigned int nbit = 0;
-    float   weight;
-    COMP    Aw[FFT_ENC];
-
-    assert(c2 != NULL);
-
-    /* only need to zero these out due to (unused) snr calculation */
-
-    for(i=0; i<4; i++)
-	for(j=1; j<=MAX_AMP; j++)
-	    model[i].A[j] = 0.0;
-
-    /* unpack bits from channel ------------------------------------*/
-
-    model[3].voiced = unpack(bits, &nbit, 1);
-    model[0].voiced = model[1].voiced = model[2].voiced = model[3].voiced;
-
-    Wo_index = unpack_natural_or_gray(bits, &nbit, 5, c2->gray);
-    model[3].Wo = decode_log_Wo(Wo_index, 5);
-    model[3].L  = PI/model[3].Wo;
-
-    e_index = unpack_natural_or_gray(bits, &nbit, 3, c2->gray);
-    e[3] = decode_energy(e_index, 3);
-
-    for(i=0; i<3; i++) {
-        indexes[i] = unpack_natural_or_gray(bits, &nbit, lspmelvq_cb_bits(i), c2->gray);
-    }
-
-    lspmelvq_decode(indexes, mel, LPC_ORD_LOW);
-
-    #define MEL_ROUND 10
-    for(i=1; i<LPC_ORD_LOW; i++) {
-        if (mel[i] <= mel[i-1]+MEL_ROUND) {
-            mel[i]+=MEL_ROUND/2;
-            mel[i-1]-=MEL_ROUND/2;
-            i = 1;
-        }
-    }
-
-    for(i=0; i<LPC_ORD_LOW; i++) {
-        f_ = 700.0*( pow(10.0, (float)mel[i]/2595.0) - 1.0);
-        lsps[3][i] = f_*(PI/4000.0);
-        //printf("lsps[3][%d]  %f\n", i, lsps[3][i]);
-    }
-
-    /* interpolate ------------------------------------------------*/
-
-    /* LSPs, Wo, and energy are sampled every 40ms so we interpolate
-       the 3 frames in between, then recover spectral amplitudes */
-
-    for(i=0, weight=0.25; i<3; i++, weight += 0.25) {
-	interpolate_lsp_ver2(&lsps[i][0], c2->prev_lsps_dec, &lsps[3][0], weight, LPC_ORD_LOW);
-        interp_Wo2(&model[i], &c2->prev_model_dec, &model[3], weight);
-        e[i] = interp_energy2(c2->prev_e_dec, e[3],weight);
-    }
-    for(i=0; i<4; i++) {
-	lsp_to_lpc(&lsps[i][0], &ak[i][0], LPC_ORD_LOW);
-	aks_to_M2(c2->fftr_fwd_cfg, &ak[i][0], LPC_ORD_LOW, &model[i], e[i], &snr, 0, 0,
-                  c2->lpc_pf, c2->bass_boost, c2->beta, c2->gamma, Aw);
-	apply_lpc_correction(&model[i]);
-	synthesise_one_frame(c2, &speech[N_SAMP*i], &model[i], Aw);
-    }
-
-    #ifdef DUMP
-    dump_lsp_(&lsps[3][0]);
-    dump_ak_(&ak[3][0], LPC_ORD_LOW);
-    dump_model(&model[3]);
-    if (c2->softdec)
-        dump_softdec(c2->softdec, nbit);
-    #endif
+//     for(i=0; i<LPC_ORD_LOW; i++) {
+//         f = (4000.0/PI)*lsps[i];
+//         mel[i] = floor(2595.0*log10(1.0 + f/700.0) + 0.5);
+//     }
+//     encode_mels_scalar(indexes, mel, LPC_ORD_LOW);
+
+//     for(i=0; i<LPC_ORD_LOW; i++) {
+//         pack_natural_or_gray(bits, &nbit, indexes[i], mel_bits(i), c2->gray);
+//     }
+
+//     pack_natural_or_gray(bits, &nbit, spare, 2, c2->gray);
+
+//     assert(nbit == (unsigned)codec2_bits_per_frame(c2));
+// }
+
+
+// /*---------------------------------------------------------------------------*\
+
+//   FUNCTION....: codec2_decode_700
+//   AUTHOR......: David Rowe
+//   DATE CREATED: April 2015
+
+//   Decodes frames of 28 bits into 320 samples (40ms) of speech.
+
+// \*---------------------------------------------------------------------------*/
+
+// void codec2_decode_700(struct CODEC2 *c2, short speech[], const unsigned char * bits)
+// {
+//     MODEL   model[4];
+//     int     indexes[LPC_ORD_LOW];
+//     float   mel[LPC_ORD_LOW];
+//     float   lsps[4][LPC_ORD_LOW];
+//     int     Wo_index, e_index;
+//     float   e[4];
+//     float   snr, f_;
+//     float   ak[4][LPC_ORD_LOW+1];
+//     int     i,j;
+//     unsigned int nbit = 0;
+//     float   weight;
+//     COMP    Aw[FFT_ENC];
+
+//     assert(c2 != NULL);
+
+//     /* only need to zero these out due to (unused) snr calculation */
+
+//     for(i=0; i<4; i++)
+// 	for(j=1; j<=MAX_AMP; j++)
+// 	    model[i].A[j] = 0.0;
+
+//     /* unpack bits from channel ------------------------------------*/
+
+//     model[3].voiced = unpack(bits, &nbit, 1);
+//     model[0].voiced = model[1].voiced = model[2].voiced = model[3].voiced;
+
+//     Wo_index = unpack_natural_or_gray(bits, &nbit, 5, c2->gray);
+//     model[3].Wo = decode_log_Wo(Wo_index, 5);
+//     model[3].L  = PI/model[3].Wo;
+
+//     e_index = unpack_natural_or_gray(bits, &nbit, 3, c2->gray);
+//     e[3] = decode_energy(e_index, 3);
+
+//     for(i=0; i<LPC_ORD_LOW; i++) {
+//         indexes[i] = unpack_natural_or_gray(bits, &nbit, mel_bits(i), c2->gray);
+//     }
+
+//     decode_mels_scalar(mel, indexes, LPC_ORD_LOW);
+//     for(i=0; i<LPC_ORD_LOW; i++) {
+//         f_ = 700.0*( pow(10.0, (float)mel[i]/2595.0) - 1.0);
+//         lsps[3][i] = f_*(PI/4000.0);
+//         //printf("lsps[3][%d]  %f\n", i, lsps[3][i]);
+//     }
+
+//     check_lsp_order(&lsps[3][0], LPC_ORD_LOW);
+//     bw_expand_lsps(&lsps[3][0], LPC_ORD_LOW, 50.0, 100.0);
+
+//     #ifdef MASK_NOT_FOR_NOW
+//     /* first pass at soft decn error masking, needs further work      */
+//     /* If soft dec info available expand further for low power frames */
+
+//     if (c2->softdec) {
+//         float e = 0.0;
+//         for(i=9; i<9+17; i++)
+//             e += c2->softdec[i]*c2->softdec[i];
+//         e /= 6.0;
+//         //fprintf(stderr, "e: %f\n", e);
+//         //if (e < 0.3)
+//         //      bw_expand_lsps(&lsps[3][0], LPC_ORD_LOW, 150.0, 300.0);
+//     }
+//     #endif
+
+//     /* interpolate ------------------------------------------------*/
+
+//     /* LSPs, Wo, and energy are sampled every 40ms so we interpolate
+//        the 3 frames in between, then recover spectral amplitudes */
+
+//     for(i=0, weight=0.25; i<3; i++, weight += 0.25) {
+// 	interpolate_lsp_ver2(&lsps[i][0], c2->prev_lsps_dec, &lsps[3][0], weight, LPC_ORD_LOW);
+//         interp_Wo2(&model[i], &c2->prev_model_dec, &model[3], weight);
+//         e[i] = interp_energy2(c2->prev_e_dec, e[3],weight);
+//     }
+//     for(i=0; i<4; i++) {
+// 	lsp_to_lpc(&lsps[i][0], &ak[i][0], LPC_ORD_LOW);
+// 	aks_to_M2(c2->fftr_fwd_cfg, &ak[i][0], LPC_ORD_LOW, &model[i], e[i], &snr, 0, 0,
+//                   c2->lpc_pf, c2->bass_boost, c2->beta, c2->gamma, Aw);
+// 	apply_lpc_correction(&model[i]);
+// 	synthesise_one_frame(c2, &speech[N_SAMP*i], &model[i], Aw);
+//     }
+
+//     #ifdef DUMP
+//     dump_lsp_(&lsps[3][0]);
+//     dump_ak_(&ak[3][0], LPC_ORD_LOW);
+//     dump_model(&model[3]);
+//     if (c2->softdec)
+//         dump_softdec(c2->softdec, nbit);
+//     #endif
+
+//     /* update memories for next frame ----------------------------*/
+
+//     c2->prev_model_dec = model[3];
+//     c2->prev_e_dec = e[3];
+//     for(i=0; i<LPC_ORD_LOW; i++)
+// 	c2->prev_lsps_dec[i] = lsps[3][i];
+// }
+
+
+// /*---------------------------------------------------------------------------*\
+
+//   FUNCTION....: codec2_encode_700b
+//   AUTHOR......: David Rowe
+//   DATE CREATED: August 2015
+
+//   Version b of 700 bit/s codec.  After some experiments over the air I
+//   wanted was unhappy with the rate 700 codec so spent a few weeks
+//   trying to improve the speech quality. This version uses a wider BPF
+//   and vector quantised mel-lsps.
+
+//   Encodes 320 speech samples (40ms of speech) into 28 bits.
+
+//   The codec2 algorithm actually operates internally on 10ms (80
+//   sample) frames, so we run the encoding algorithm four times:
+
+//   frame 0: nothing
+//   frame 1: nothing
+//   frame 2: nothing
+//   frame 3: voicing bit, 5 bit scalar Wo and 3 bit E, 18 bit LSP MEL VQ,
+//            1 spare
+
+//   The bit allocation is:
+
+//     Parameter                      frames 1-3   frame 4   Total
+//     -----------------------------------------------------------
+//     Harmonic magnitudes (LSPs)          0         18        18
+//     Energy                              0          3         3
+//     log Wo                              0          5         5
+//     Voicing                             0          1         1
+//     spare                               0          1         1
+//     TOTAL                               0         28        28
+
+// \*---------------------------------------------------------------------------*/
+
+// void codec2_encode_700b(struct CODEC2 *c2, unsigned char * bits, short speech[])
+// {
+//     MODEL   model;
+//     float   lsps[LPC_ORD_LOW];
+//     float   mel[LPC_ORD_LOW];
+//     float   mel_[LPC_ORD_LOW];
+//     float   ak[LPC_ORD_LOW+1];
+//     float   e, f;
+//     int     indexes[3];
+//     int     Wo_index, e_index, i;
+//     unsigned int nbit = 0;
+//     float   bpf_out[4*N_SAMP];
+//     short   bpf_speech[4*N_SAMP];
+//     int     spare = 0;
+
+//     assert(c2 != NULL);
+
+//     memset(bits, '\0',  ((codec2_bits_per_frame(c2) + 7) / 8));
+
+//     /* band pass filter */
+
+//     for(i=0; i<BPF_N; i++)
+//         c2->bpf_buf[i] = c2->bpf_buf[4*N_SAMP+i];
+//     for(i=0; i<4*N_SAMP; i++)
+//         c2->bpf_buf[BPF_N+i] = speech[i];
+//     inverse_filter(&c2->bpf_buf[BPF_N], bpfb, 4*N_SAMP, bpf_out, BPF_N-1);
+//     for(i=0; i<4*N_SAMP; i++)
+//         bpf_speech[i] = bpf_out[i];
+
+//     /* frame 1 --------------------------------------------------------*/
+
+//     analyse_one_frame(c2, &model, bpf_speech);
+
+//     /* frame 2 --------------------------------------------------------*/
+
+//     analyse_one_frame(c2, &model, &bpf_speech[N_SAMP]);
+
+//     /* frame 3 --------------------------------------------------------*/
+
+//     analyse_one_frame(c2, &model, &bpf_speech[2*N_SAMP]);
+
+//     /* frame 4: - voicing, scalar Wo & E, VQ mel LSPs -----------------*/
+
+//     analyse_one_frame(c2, &model, &bpf_speech[3*N_SAMP]);
+//     pack(bits, &nbit, model.voiced, 1);
+//     Wo_index = encode_log_Wo(model.Wo, 5);
+//     pack_natural_or_gray(bits, &nbit, Wo_index, 5, c2->gray);
+
+//     e = speech_to_uq_lsps(lsps, ak, c2->Sn, c2->w, LPC_ORD_LOW);
+//     e_index = encode_energy(e, 3);
+//     pack_natural_or_gray(bits, &nbit, e_index, 3, c2->gray);
+
+//     for(i=0; i<LPC_ORD_LOW; i++) {
+//         f = (4000.0/PI)*lsps[i];
+//         mel[i] = floor(2595.0*log10(1.0 + f/700.0) + 0.5);
+//     }
+//     lspmelvq_mbest_encode(indexes, mel, mel_, LPC_ORD_LOW, 5);
+
+//     for(i=0; i<3; i++) {
+//         pack_natural_or_gray(bits, &nbit, indexes[i], lspmelvq_cb_bits(i), c2->gray);
+//     }
+
+//     pack_natural_or_gray(bits, &nbit, spare, 1, c2->gray);
+
+//     assert(nbit == (unsigned)codec2_bits_per_frame(c2));
+// }
+
+
+// /*---------------------------------------------------------------------------*\
+
+//   FUNCTION....: codec2_decode_700b
+//   AUTHOR......: David Rowe
+//   DATE CREATED: August 2015
+
+//   Decodes frames of 28 bits into 320 samples (40ms) of speech.
+
+// \*---------------------------------------------------------------------------*/
+
+// void codec2_decode_700b(struct CODEC2 *c2, short speech[], const unsigned char * bits)
+// {
+//     MODEL   model[4];
+//     int     indexes[3];
+//     float   mel[LPC_ORD_LOW];
+//     float   lsps[4][LPC_ORD_LOW];
+//     int     Wo_index, e_index;
+//     float   e[4];
+//     float   snr, f_;
+//     float   ak[4][LPC_ORD_LOW+1];
+//     int     i,j;
+//     unsigned int nbit = 0;
+//     float   weight;
+//     COMP    Aw[FFT_ENC];
+
+//     assert(c2 != NULL);
+
+//     /* only need to zero these out due to (unused) snr calculation */
+
+//     for(i=0; i<4; i++)
+// 	for(j=1; j<=MAX_AMP; j++)
+// 	    model[i].A[j] = 0.0;
+
+//     /* unpack bits from channel ------------------------------------*/
+
+//     model[3].voiced = unpack(bits, &nbit, 1);
+//     model[0].voiced = model[1].voiced = model[2].voiced = model[3].voiced;
+
+//     Wo_index = unpack_natural_or_gray(bits, &nbit, 5, c2->gray);
+//     model[3].Wo = decode_log_Wo(Wo_index, 5);
+//     model[3].L  = PI/model[3].Wo;
+
+//     e_index = unpack_natural_or_gray(bits, &nbit, 3, c2->gray);
+//     e[3] = decode_energy(e_index, 3);
+
+//     for(i=0; i<3; i++) {
+//         indexes[i] = unpack_natural_or_gray(bits, &nbit, lspmelvq_cb_bits(i), c2->gray);
+//     }
+
+//     lspmelvq_decode(indexes, mel, LPC_ORD_LOW);
+
+//     #define MEL_ROUND 10
+//     for(i=1; i<LPC_ORD_LOW; i++) {
+//         if (mel[i] <= mel[i-1]+MEL_ROUND) {
+//             mel[i]+=MEL_ROUND/2;
+//             mel[i-1]-=MEL_ROUND/2;
+//             i = 1;
+//         }
+//     }
+
+//     for(i=0; i<LPC_ORD_LOW; i++) {
+//         f_ = 700.0*( pow(10.0, (float)mel[i]/2595.0) - 1.0);
+//         lsps[3][i] = f_*(PI/4000.0);
+//         //printf("lsps[3][%d]  %f\n", i, lsps[3][i]);
+//     }
+
+//     /* interpolate ------------------------------------------------*/
+
+//     /* LSPs, Wo, and energy are sampled every 40ms so we interpolate
+//        the 3 frames in between, then recover spectral amplitudes */
+
+//     for(i=0, weight=0.25; i<3; i++, weight += 0.25) {
+// 	interpolate_lsp_ver2(&lsps[i][0], c2->prev_lsps_dec, &lsps[3][0], weight, LPC_ORD_LOW);
+//         interp_Wo2(&model[i], &c2->prev_model_dec, &model[3], weight);
+//         e[i] = interp_energy2(c2->prev_e_dec, e[3],weight);
+//     }
+//     for(i=0; i<4; i++) {
+// 	lsp_to_lpc(&lsps[i][0], &ak[i][0], LPC_ORD_LOW);
+// 	aks_to_M2(c2->fftr_fwd_cfg, &ak[i][0], LPC_ORD_LOW, &model[i], e[i], &snr, 0, 0,
+//                   c2->lpc_pf, c2->bass_boost, c2->beta, c2->gamma, Aw);
+// 	apply_lpc_correction(&model[i]);
+// 	synthesise_one_frame(c2, &speech[N_SAMP*i], &model[i], Aw);
+//     }
+
+//     #ifdef DUMP
+//     dump_lsp_(&lsps[3][0]);
+//     dump_ak_(&ak[3][0], LPC_ORD_LOW);
+//     dump_model(&model[3]);
+//     if (c2->softdec)
+//         dump_softdec(c2->softdec, nbit);
+//     #endif
 
-    /* update memories for next frame ----------------------------*/
-
-    c2->prev_model_dec = model[3];
-    c2->prev_e_dec = e[3];
-    for(i=0; i<LPC_ORD_LOW; i++)
-	c2->prev_lsps_dec[i] = lsps[3][i];
-}
-
-
-/*---------------------------------------------------------------------------*\
-
-  FUNCTION....: codec2_encode_700c
-  AUTHOR......: David Rowe
-  DATE CREATED: Jan 2017
-
-  Version c of 700 bit/s codec that uses newamp1 fixed rate VQ of amplitudes.
-
-  Encodes 320 speech samples (40ms of speech) into 28 bits.
-
-  The codec2 algorithm actually operates internally on 10ms (80
-  sample) frames, so we run the encoding algorithm four times:
-
-  frame 0: nothing
-  frame 1: nothing
-  frame 2: nothing
-  frame 3: 18 bit 2 stage VQ (9 bits/stage), 4 bits energy, 
-           6 bit scalar Wo/voicing. No spare bits.
-
-  Voicing is encoded using the 0 index of the Wo quantiser.
-
-  The bit allocation is:
-
-    Parameter                      frames 1-3   frame 4   Total
-    -----------------------------------------------------------
-    Harmonic magnitudes (rate k VQ)     0         18        18
-    Energy                              0          4         4
-    log Wo/voicing                      0          6         6
-    TOTAL                               0         28        28
-
-\*---------------------------------------------------------------------------*/
-
-void codec2_encode_700c(struct CODEC2 *c2, unsigned char * bits, short speech[])
-{
-    MODEL        model;
-    int          indexes[4], i, M=4;
-    unsigned int nbit = 0;
-
-    assert(c2 != NULL);
-
-    memset(bits, '\0',  ((codec2_bits_per_frame(c2) + 7) / 8));
-
-    for(i=0; i<M; i++) {
-        analyse_one_frame(c2, &model, &speech[i*N_SAMP]);
-    }
-
-    int K = 20;
-    float rate_K_vec[K], mean;
-    float rate_K_vec_no_mean[K], rate_K_vec_no_mean_[K];
-
-    newamp1_model_to_indexes(indexes, 
-                             &model, 
-                             rate_K_vec, 
-                             c2->rate_K_sample_freqs_kHz,
-                             K,
-                             &mean,
-                             rate_K_vec_no_mean,
-                             rate_K_vec_no_mean_);
-
-    pack_natural_or_gray(bits, &nbit, indexes[0], 9, 0);
-    pack_natural_or_gray(bits, &nbit, indexes[1], 9, 0);
-    pack_natural_or_gray(bits, &nbit, indexes[2], 4, 0);
-    pack_natural_or_gray(bits, &nbit, indexes[3], 6, 0);
-
-    assert(nbit == (unsigned)codec2_bits_per_frame(c2));
-}
-
-
-/*---------------------------------------------------------------------------*\
-
-  FUNCTION....: codec2_decode_700c
-  AUTHOR......: David Rowe
-  DATE CREATED: August 2015
-
-  Decodes frames of 28 bits into 320 samples (40ms) of speech.
-
-\*---------------------------------------------------------------------------*/
-
-void codec2_decode_700c(struct CODEC2 *c2, short speech[], const unsigned char * bits)
-{
-    MODEL   model[4];
-    int     indexes[4];
-    int     i;
-    unsigned int nbit = 0;
-
-    assert(c2 != NULL);
-
-    /* unpack bits from channel ------------------------------------*/
-
-    indexes[0] = unpack_natural_or_gray(bits, &nbit, 9, 0);
-    indexes[1] = unpack_natural_or_gray(bits, &nbit, 9, 0);
-    indexes[2] = unpack_natural_or_gray(bits, &nbit, 4, 0);
-    indexes[3] = unpack_natural_or_gray(bits, &nbit, 6, 0);
+//     /* update memories for next frame ----------------------------*/
+
+//     c2->prev_model_dec = model[3];
+//     c2->prev_e_dec = e[3];
+//     for(i=0; i<LPC_ORD_LOW; i++)
+// 	c2->prev_lsps_dec[i] = lsps[3][i];
+// }
+
+
+// /*---------------------------------------------------------------------------*\
+
+//   FUNCTION....: codec2_encode_700c
+//   AUTHOR......: David Rowe
+//   DATE CREATED: Jan 2017
+
+//   Version c of 700 bit/s codec that uses newamp1 fixed rate VQ of amplitudes.
+
+//   Encodes 320 speech samples (40ms of speech) into 28 bits.
+
+//   The codec2 algorithm actually operates internally on 10ms (80
+//   sample) frames, so we run the encoding algorithm four times:
+
+//   frame 0: nothing
+//   frame 1: nothing
+//   frame 2: nothing
+//   frame 3: 18 bit 2 stage VQ (9 bits/stage), 4 bits energy, 
+//            6 bit scalar Wo/voicing. No spare bits.
+
+//   Voicing is encoded using the 0 index of the Wo quantiser.
+
+//   The bit allocation is:
+
+//     Parameter                      frames 1-3   frame 4   Total
+//     -----------------------------------------------------------
+//     Harmonic magnitudes (rate k VQ)     0         18        18
+//     Energy                              0          4         4
+//     log Wo/voicing                      0          6         6
+//     TOTAL                               0         28        28
+
+// \*---------------------------------------------------------------------------*/
+
+// void codec2_encode_700c(struct CODEC2 *c2, unsigned char * bits, short speech[])
+// {
+//     MODEL        model;
+//     int          indexes[4], i, M=4;
+//     unsigned int nbit = 0;
+
+//     assert(c2 != NULL);
+
+//     memset(bits, '\0',  ((codec2_bits_per_frame(c2) + 7) / 8));
+
+//     for(i=0; i<M; i++) {
+//         analyse_one_frame(c2, &model, &speech[i*N_SAMP]);
+//     }
+
+//     int K = 20;
+//     float rate_K_vec[K], mean;
+//     float rate_K_vec_no_mean[K], rate_K_vec_no_mean_[K];
+
+//     newamp1_model_to_indexes(indexes, 
+//                              &model, 
+//                              rate_K_vec, 
+//                              c2->rate_K_sample_freqs_kHz,
+//                              K,
+//                              &mean,
+//                              rate_K_vec_no_mean,
+//                              rate_K_vec_no_mean_);
+
+//     pack_natural_or_gray(bits, &nbit, indexes[0], 9, 0);
+//     pack_natural_or_gray(bits, &nbit, indexes[1], 9, 0);
+//     pack_natural_or_gray(bits, &nbit, indexes[2], 4, 0);
+//     pack_natural_or_gray(bits, &nbit, indexes[3], 6, 0);
+
+//     assert(nbit == (unsigned)codec2_bits_per_frame(c2));
+// }
+
+
+// /*---------------------------------------------------------------------------*\
+
+//   FUNCTION....: codec2_decode_700c
+//   AUTHOR......: David Rowe
+//   DATE CREATED: August 2015
+
+//   Decodes frames of 28 bits into 320 samples (40ms) of speech.
+
+// \*---------------------------------------------------------------------------*/
+
+// void codec2_decode_700c(struct CODEC2 *c2, short speech[], const unsigned char * bits)
+// {
+//     MODEL   model[4];
+//     int     indexes[4];
+//     int     i;
+//     unsigned int nbit = 0;
+
+//     assert(c2 != NULL);
+
+//     /* unpack bits from channel ------------------------------------*/
+
+//     indexes[0] = unpack_natural_or_gray(bits, &nbit, 9, 0);
+//     indexes[1] = unpack_natural_or_gray(bits, &nbit, 9, 0);
+//     indexes[2] = unpack_natural_or_gray(bits, &nbit, 4, 0);
+//     indexes[3] = unpack_natural_or_gray(bits, &nbit, 6, 0);
     
-    int M = 4;
-    COMP  HH[M][MAX_AMP+1];
-    float interpolated_surface_[M][NEWAMP1_K];
+//     int M = 4;
+//     COMP  HH[M][MAX_AMP+1];
+//     float interpolated_surface_[M][NEWAMP1_K];
 
-    newamp1_indexes_to_model(model,
-                             (COMP*)HH,
-                             (float*)interpolated_surface_,
-                             c2->prev_rate_K_vec_,
-                             &c2->Wo_left,
-                             &c2->voicing_left,
-                             c2->rate_K_sample_freqs_kHz, 
-                             NEWAMP1_K,
-                             c2->phase_fft_fwd_cfg, 
-                             c2->phase_fft_inv_cfg,
-                             indexes);
+//     newamp1_indexes_to_model(model,
+//                              (COMP*)HH,
+//                              (float*)interpolated_surface_,
+//                              c2->prev_rate_K_vec_,
+//                              &c2->Wo_left,
+//                              &c2->voicing_left,
+//                              c2->rate_K_sample_freqs_kHz, 
+//                              NEWAMP1_K,
+//                              c2->phase_fft_fwd_cfg, 
+//                              c2->phase_fft_inv_cfg,
+//                              indexes);
 
 
-   for(i=0; i<M; i++) {
-	synthesise_one_frame(c2, &speech[N_SAMP*i], &model[i], &HH[i][0]);
-   }
-}
+//    for(i=0; i<M; i++) {
+// 	synthesise_one_frame(c2, &speech[N_SAMP*i], &model[i], &HH[i][0]);
+//    }
+// }
 
-/*---------------------------------------------------------------------------*\
+// /*---------------------------------------------------------------------------*\
 
-  FUNCTION....: codec2_energy_700c
-  AUTHOR......: Jeroen Vreeken
-  DATE CREATED: Jan 2017
+//   FUNCTION....: codec2_energy_700c
+//   AUTHOR......: Jeroen Vreeken
+//   DATE CREATED: Jan 2017
 
-  Decodes energy value from encoded bits.
+//   Decodes energy value from encoded bits.
 
-\*---------------------------------------------------------------------------*/
+// \*---------------------------------------------------------------------------*/
 
-float codec2_energy_700c(struct CODEC2 *c2, const unsigned char * bits)
-{
-    int     indexes[4];
-    unsigned int nbit = 0;
+// float codec2_energy_700c(struct CODEC2 *c2, const unsigned char * bits)
+// {
+//     int     indexes[4];
+//     unsigned int nbit = 0;
 
-    assert(c2 != NULL);
+//     assert(c2 != NULL);
 
-    /* unpack bits from channel ------------------------------------*/
+//     /* unpack bits from channel ------------------------------------*/
 
-    indexes[0] = unpack_natural_or_gray(bits, &nbit, 9, 0);
-    indexes[1] = unpack_natural_or_gray(bits, &nbit, 9, 0);
-    indexes[2] = unpack_natural_or_gray(bits, &nbit, 4, 0);
-    indexes[3] = unpack_natural_or_gray(bits, &nbit, 6, 0);
+//     indexes[0] = unpack_natural_or_gray(bits, &nbit, 9, 0);
+//     indexes[1] = unpack_natural_or_gray(bits, &nbit, 9, 0);
+//     indexes[2] = unpack_natural_or_gray(bits, &nbit, 4, 0);
+//     indexes[3] = unpack_natural_or_gray(bits, &nbit, 6, 0);
 
-    float mean = newamp1_energy_cb[0].cb[indexes[2]];
-    mean -= 10;
-    if (indexes[3] == 0)
-    	mean -= 10;
+//     float mean = newamp1_energy_cb[0].cb[indexes[2]];
+//     mean -= 10;
+//     if (indexes[3] == 0)
+//     	mean -= 10;
 
-    return powf(10.0, mean/10.0);
-}
+//     return powf(10.0, mean/10.0);
+// }
 
-#endif
+// #endif
 
 /*---------------------------------------------------------------------------*\
 
@@ -1976,7 +1976,7 @@ float codec2_get_energy(struct CODEC2 *c2, const unsigned char *bits)
         e_index = unpack_natural_or_gray(bits, &nbit, 3, c2->gray);
         e = decode_energy(e_index, 3);
     }
-#ifndef CORTEX_M4
+#if !defined(CORTEX_M4) && !defined(CORTEX_M33)
     if (c2->mode == CODEC2_MODE_700C) {
         e = codec2_energy_700c(c2, bits);
     }

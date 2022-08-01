@@ -9,6 +9,15 @@
 
 void main(void)
 {
-	codec2_create(1300);
+	struct CODEC2 *c2;
+
+	c2 = codec2_create(CODEC2_MODE_1200);
+	// int nsam = codec2_samples_per_frame(c2);
+	// int nbit = codec2_bits_per_frame(c2);
+  	// int nbyte = (nbit + 7) / 8;
+
 	printk("Hello World! %s\n", CONFIG_BOARD);
+	// printk("nsam %d\n", nsam);
+	// printk("nbit %d\n", nbit);
+	// printk("nbyte %d\n", nbyte);
 }

@@ -21,6 +21,13 @@
   #include "arm_const_structs.h"
 #endif
 
+#ifdef ARM_MATH_CM33
+  #include "nrf9160.h"
+  #include "core_cm33.h"
+  #include "arm_math.h"
+  #include "arm_const_structs.h"
+#endif
+
 #include "defines.h"
 #include "comp.h"
 

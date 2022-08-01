@@ -3,7 +3,7 @@
 // const removed since this provides gain
 // on the STM32F4 platform
 
-#ifdef CORTEX_M4
+#if defined(CORTEX_M4) || defined(CORTEX_M33)
 /* const */ float pilot_coeff[]={
 #else
 const float pilot_coeff[]={
