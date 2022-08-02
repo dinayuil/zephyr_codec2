@@ -18,13 +18,12 @@ The project is tested on Windows 10.
 Install the nRF Connect tools by following the [guide](https://nrfconnect.github.io/vscode-nrf-connect/connect/install.html). Import this project by the nRF Connect VS Code extension (https://nrfconnect.github.io/vscode-nrf-connect/connect/ui.html)
 
 #### Flash the Application
-In `main.c` file, comment out one of ```TX_BOARD``` and ```RX_BOARD``` defines to make the board either a transmitter or a receiver (but of course, one board need to be tx and another one to be rx). Build and flash.  
+In `main.c` file, comment out one of ```TX_BOARD``` and ```RX_BOARD``` defines to make the board either a transmitter or a receiver (but of course, one board need to be TX and another one to be RX). Build and flash.  
 ![picture 1](images/1659435623057.png)  
 
 #### Wiring
-Each pin name printed on the nRF9160 board corresponds to a pin number, listed in the following figures. Pin number is used in the wiring tables.
+Each pin name printed on the nRF9160 board corresponds to a pin number, listed in the following figure. Pin number is used in the wiring tables.
 
-![picture 3](images/1659447370342.png) 
 ![picture 2](images/1659447352381.png)  
 
 
@@ -39,9 +38,51 @@ Each pin name printed on the nRF9160 board corresponds to a pin number, listed i
 | UART1 | TX: P0.00      | RX: P0.01      |
 |       | RX: P0.01      | TX: P0.00      |
 
-#### Transfer Raw Audio from PC to the TX Board
+#### Transfer and Process Audio
+The TX board will receive the original audio from PC, and use Codec 2 to encode the audio, then transmit the Codec 2 bits to the RX board.
+
+The RX board will receive the Codec 2 bits from TX board, and decode the bits, then transmit the reconstructed audio to PC.
+
+We use `hts1a.raw` as input audio. It is in 16-bit PCM format with 8000 Hz sampling rate.
+
+Each board has two serial ports connected to PC:
+- Type-C port: One for connection of the USB Type-C port on the board to the PC. This port is used by `printk` and log function for console output.
+- UART2 port: Another one for the UART2 port connected to a UART-USB adapter, and finally connected to PC. For TX board, this one will receive the original audio from PC; for RX board, it sends the processed audio to PC.
+
+##### Prepare the Serial Debug Assistant
+For TX Board:
+- Type-C port
+    - Open Serial Debug Assistant, choose the correct `Serial Port`, set `Baud Rate` to `115200`.
+    - Click `Open serail port`.
+    - Push the reset button on the board, then some information will be printed out.
+- UART2 port
+    - Open Serial Debug Assistant, choose the correct `Serial Port`, set `Baud Rate` to `115200`.
+    - Click `Open serail port`.
+    - Check `Send a file`, then there is a window prompted to choose the file.
+
+For RX Board:
+- Type-C port: same as TX Board.
+- UART2 port:
+    - Open Serial Debug Assistant, choose the correct `Serial Port`, set `Baud Rate` to `115200`.
+    - Check `HEX display`.
+    - Click `Open serail port`.
+
+##### Transfer Audio
+In the Serial Debug Assistant window for TX board UART2 port, click the right lower "paper plane" icon, to start sending the original audio.
+
+After TX board received the whole audio, it encodes the audio and send Codec 2 bits to the RX board. After RX board receives all the Codec 2 bits, it decode and send the reconstructed audio to the PC by UART2 port.
+
+Therefore, in the Serial Debug Assistant window for RX board UART2 port, many hex strings will appear. After the transmission stop, click `Save data`. There will be a window prompted to choose the file location. The data is saved as plain text (txt) file.
+
+#### Listen to the Processed Audio
+
+
+
+
+
 
 
 ## Reference
 - [A slightly modified old version of Codec 2 for STM32F4](https://github.com/x893/codec2)
 - [nRF9160 Schematic](https://cdn.sparkfun.com/assets/5/7/c/a/c/nRF9160_Thing_Plus.pdf)
+- [Example audio](https://www.rowetel.com/downloads/codec2/hts1a.wav)
