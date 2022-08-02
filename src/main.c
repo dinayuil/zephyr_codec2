@@ -135,11 +135,11 @@ void main(void)
 	int nbit = codec2_bits_per_frame(c2);
   	int nbyte = (nbit + 7) / 8;
 
-    printk("==== Codec 2 config info\n ====");
+    printk("==== Codec 2 config info ====\n");
 	printk("number of PCM samples to encode for one frame (nsam): %d\n", nsam);
 	printk("number of bits after encoding (nbit): %d\n", nbit);
 	printk("number of bytes after encoding (nbyte) %d\n", nbyte);
-    printk("================================");
+    printk("=============================\n");
 
 	int encodedSize = AUDIO_BUF_U16_SIZE/nsam * nbyte;
 	uint8_t encodedAudio[encodedSize];
@@ -192,16 +192,10 @@ void main(void)
 
     /* Encode audio*/
 	printk("Start encoding audio.\n");
-    // uint16_t audio_frame_buf[nsam];
-	// uint8_t encoded_audio_bits[nbyte];
+
     audioBufPos = 0;
 	for(int i = 0; i < encodedSize; i+=nbyte) {
-		// memcpy(audio_frame_buf, &audio_buf[i], nsam*2);
 		codec2_encode(c2, &encodedAudio[i], &audio_buf[audioBufPos]);
-		// memset(audio_frame_buf, 0, 640);
-		// uart_tx(uart1_dev, &encodedAudio[i], nbyte, SYS_FOREVER_MS);
-		// codec2_decode(c2, audio_frame_buf, encoded_audio_bits);
-		// memcpy(&audio_buf[i], audio_frame_buf, 640);
         audioBufPos += nsam;
 	}
     printk("Encoding finished.\n");
@@ -214,8 +208,6 @@ void main(void)
 #ifdef RX_BOARD
 
 	/* Receive encoded audio bits */
-	// int encodedSize = AUDIO_BUF_U16_SIZE/nsam * nbyte;
-	// uint8_t encodedAudio[encodedSize];
 
 	err = uart_rx_enable(uart1_dev, encodedAudio, encodedSize, SYS_FOREVER_MS);
     // wait until rx finished
