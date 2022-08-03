@@ -90,14 +90,19 @@ RX Board UART2 Port
 
 
 #### Listen to the Processed Audio
-Open HxD, create a new file (Ctrl+N), copy all the content in the txt file to HxD, save as a .raw file. Then we can play the audio.
+Open HxD, create a new file (Ctrl+N), copy all the content in the txt file to HxD, save as a .raw file. 
 
-Open Audacity, click `File->Import->Raw Data...`, choose the .raw file just saved. Change the sample rate to `8000`.
+HxD and txt
+![picture 8](images/1659525732954.png)  
+
+
+Open Audacity, click `File->Import->Raw Data...`, choose the .raw file just saved. Change the sample rate to `8000`. Then we can play the audio.
 
 ![picture 1](images/1659513520601.png)  
 
 ![picture 2](images/1659513627639.png)  
 
+![picture 9](images/1659530823677.png)  
 
 
 ## nRF and Zephyr
