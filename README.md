@@ -3,6 +3,7 @@
 ## How to use this code
 
 The project is tested on Windows 10.
+
 ### Hardware
 - Two [nRF9160 Thing Plus](https://www.sparkfun.com/products/17354) boards.
 - J-Link, for flashing application to the board and debug.
@@ -16,6 +17,8 @@ The project is tested on Windows 10.
 
 ### Tutorial
 Install the nRF Connect tools by following the [guide](https://nrfconnect.github.io/vscode-nrf-connect/connect/install.html). Import this project by the nRF Connect VS Code extension. Consult their guide for importing project.
+
+(In case you need to select the board for creating new application, the board is `circuitdojo_feather_nrf9160_ns`.)
 
 #### Flash the Application
 In `main.c` file, comment out one of ```TX_BOARD``` and ```RX_BOARD``` defines to make the board either a transmitter or a receiver (but of course, one board need to be TX and another one to be RX). Build and flash.  
@@ -106,8 +109,39 @@ Open Audacity, click `File->Import->Raw Data...`, choose the .raw file just save
 
 
 ## nRF and Zephyr
+The nRF SDK currently DO NOT support UART 16-bit data transmission, functions in the name like `uart_xx_u16` won't work. Therefore, although the audio buffer is `uint16_t`, the data between transmission should use `uint8_t` type. So, always pay attention to the data size.
+
+### Kconfig
+When using the Kconfig of the nRF connect extension for VS code, use `Save to file` to permanently save the configuration in the `prj.conf`. If you use `Save`, it only saves to a temporary file and will be lost after build, and the change doesn't take effect.
+
+![picture 10](images/1659538913374.png)  
+
+### Overlay
+In Details View, you can find the file `circuitdojo_feather_nrf9160_common.dts`, which contains all the peripheral settings.
+
+When we want to change, for example, UART1, we need to create an overlay file. If we didn't create it, there will be a sign `No overlay files`. After click it, an empty overlay file will be generated.
+
+![picture 12](images/1659539944660.png)  
+
+![picture 11](images/1659539857344.png)  
+
+
+### Some Useful Links
+[Zephyr Device Tree](https://docs.zephyrproject.org/latest/build/dts/intro.html): I think the document is good to learn the device tree (with helpful knwoledge to configure the peripherals in overlay file), long documentation but most parts are understandable.
+
+[Zephyr Example Projects](https://docs.zephyrproject.org/latest/samples/index.html): There is only description on each example page, but there is also a link to the GitHub repo so you can read the code.
+
+[Zephyr API Documentation](https://docs.zephyrproject.org/latest/doxygen/html/index.html): Documentation of functions in Zephyr. The [asynchronous UART](https://docs.zephyrproject.org/latest/hardware/peripherals/uart.html#uart-async-api) part is especially helpful for this project.
+
+[Error Numbers](https://docs.zephyrproject.org/apidoc/latest/group__system__errno.html): Good to know for debugging.
+
+
+## Current Features
+
+## Possible Improvement
 
 ## Reference
 - [A slightly modified old version of Codec 2 for STM32F4](https://github.com/x893/codec2)
 - [nRF9160 Schematic](https://cdn.sparkfun.com/assets/5/7/c/a/c/nRF9160_Thing_Plus.pdf)
 - [Example audio](https://www.rowetel.com/downloads/codec2/hts1a.wav)
+- [16 Bit UART support in Nordic SDK (v1.9.0) - Bus Fault error?](https://devzone.nordicsemi.com/f/nordic-q-a/84996/16-bit-uart-support-in-nordic-sdk-v1-9-0---bus-fault-error)
