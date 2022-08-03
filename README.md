@@ -4,9 +4,9 @@
 
 The project is tested on Windows 10.
 ### Hardware
-- Two [nRF9160 Thing Plus](https://www.sparkfun.com/products/17354) boards
-- J-Link, for flashing application to the board
-- Two UART <-> USB adapters
+- Two [nRF9160 Thing Plus](https://www.sparkfun.com/products/17354) boards.
+- J-Link, for flashing application to the board and debug.
+- Two UART-USB adapters.
 
 ### Software
 - [串口调试助手 (Serial Debug Assistant)](https://www.microsoft.com/store/productId/9NBLGGH43HDM). Other serial port tools on PC are possible, but this tutorial uses the aforementioned tool.
@@ -15,7 +15,7 @@ The project is tested on Windows 10.
 - [nRF Connect for VS Code](https://nrfconnect.github.io/vscode-nrf-connect/index.html)
 
 ### Tutorial
-Install the nRF Connect tools by following the [guide](https://nrfconnect.github.io/vscode-nrf-connect/connect/install.html). Import this project by the nRF Connect VS Code extension (https://nrfconnect.github.io/vscode-nrf-connect/connect/ui.html)
+Install the nRF Connect tools by following the [guide](https://nrfconnect.github.io/vscode-nrf-connect/connect/install.html). Import this project by the nRF Connect VS Code extension. Consult their guide for importing project.
 
 #### Flash the Application
 In `main.c` file, comment out one of ```TX_BOARD``` and ```RX_BOARD``` defines to make the board either a transmitter or a receiver (but of course, one board need to be TX and another one to be RX). Build and flash.  
@@ -27,7 +27,7 @@ Each pin name printed on the nRF9160 board corresponds to a pin number, listed i
 ![picture 2](images/1659447352381.png)  
 
 
-|       |     Board    | UART <-> USB adapter |
+|       |     Board    |   UART-USB adapter   |
 |-------|--------------|----------------------|
 | UART2 | TX: P0.24    | RX                   |
 |       | RX: P0.23    | TX                   |
@@ -60,6 +60,10 @@ For TX Board:
     - Click `Open serail port`.
     - Check `Send a file`, then there is a window prompted to choose the file.
 
+TX Board Type-C Port
+![picture 3](images/1659516368622.png)  
+
+
 For RX Board:
 - Type-C port: same as TX Board.
 - UART2 port:
@@ -67,20 +71,36 @@ For RX Board:
     - Check `HEX display`.
     - Click `Open serail port`.
 
+RX Board Type-C Port
+![picture 4](images/1659516436663.png)  
+
+
 ##### Transfer Audio
 In the Serial Debug Assistant window for TX board UART2 port, click the right lower "paper plane" icon, to start sending the original audio.
+
+TX Board UART2 Port
+![picture 6](images/1659516626746.png)  
 
 After TX board received the whole audio, it encodes the audio and send Codec 2 bits to the RX board. After RX board receives all the Codec 2 bits, it decode and send the reconstructed audio to the PC by UART2 port.
 
 Therefore, in the Serial Debug Assistant window for RX board UART2 port, many hex strings will appear. After the transmission stop, click `Save data`. There will be a window prompted to choose the file location. The data is saved as plain text (txt) file.
 
+RX Board UART2 Port
+![picture 7](images/1659516659005.png)  
+
+
 #### Listen to the Processed Audio
+Open HxD, create a new file (Ctrl+N), copy all the content in the txt file to HxD, save as a .raw file. Then we can play the audio.
+
+Open Audacity, click `File->Import->Raw Data...`, choose the .raw file just saved. Change the sample rate to `8000`.
+
+![picture 1](images/1659513520601.png)  
+
+![picture 2](images/1659513627639.png)  
 
 
 
-
-
-
+## nRF and Zephyr
 
 ## Reference
 - [A slightly modified old version of Codec 2 for STM32F4](https://github.com/x893/codec2)
