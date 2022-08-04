@@ -157,7 +157,7 @@ Other important changes are that where there is ```if(n)def ARM_MATH_CM4``` or `
 ## Possible Improvement
 Currently, the application transmitter role saves the whole input audio, whose duration is 3s, in memory. Then it encodes and also saves the Codec 2 bits in memory. Next, the transmitter sends the Codec 2 bits to the receiver. The receiver also save the whole encoded audio bits in memory, and then decode.
 
-For live audio (streaming), the above pattern is not feasible. We need to encode the audio once a frame (320 uint16_t PCM data for 1200 bps, 160 uint16_t PCM data for 3200 bps) comes in. Then transmit the Codec 2 bits while receiving the next frame.
+For live audio (streaming), the above pattern is not feasible. We need to encode the audio once a frame (320 16-bit PCM data for 1200 bps, 160 16-bit PCM data for 3200 bps) comes in. Then transmit the Codec 2 bits while receiving the next frame.
 
 The 8000 Hz sample rate means that 320 PCM data corresponds to 40 ms duration, and 160 PCM data corresponds to 20 ms. Moreover, these are the durations we can use to encode the frame. The UART can be set fast enough so that the transmission time can be omitted.
 
