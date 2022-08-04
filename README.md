@@ -119,12 +119,16 @@ When using the Kconfig of the nRF connect extension for VS code, use `Save to fi
 ### Overlay
 In Details View, you can find the file `circuitdojo_feather_nrf9160_common.dts`, which contains all the peripheral settings.
 
-When we want to change, for example, UART1, we need to create an overlay file. If we didn't create it, there will be a sign `No overlay files`. After click it, an empty overlay file will be generated.
+When we want to change, for example, UART1, we need to create an overlay file. If we didn't create it before, there will be a sign `No overlay files`. After click it, an empty overlay file will be generated.
 
 ![picture 12](images/1659539944660.png)  
 
 ![picture 11](images/1659539857344.png)  
 
+### CMake
+At the beginning I tried to include Codec 2 files to the application as a library, but ended with `Conflicting CPU architectures` error. I then tried to export the environment of zephyr and set those for Codec 2 library, but ended with `argument to '-O' should be a non-negative integer, 'g', 's' or 'fast'` error. However, it was very strange that as I saw from the command line the option with `-O` is valid.
+
+Anyway, before I gave up, I tried to include Codec 2 as application source files, then it successfully compiled and linked.
 
 ### Some Useful Links
 [Zephyr Device Tree](https://docs.zephyrproject.org/latest/build/dts/intro.html): I think the document is good to learn the device tree (with helpful knwoledge to configure the peripherals in overlay file), long documentation but most parts are understandable.
@@ -136,9 +140,29 @@ When we want to change, for example, UART1, we need to create an overlay file. I
 [Error Numbers](https://docs.zephyrproject.org/apidoc/latest/group__system__errno.html): Good to know for debugging.
 
 
-## Current Features
+## Codec 2
+To make the project build, I also commented out code about Codec 2 700 bps mode. It is possible to include that code, but for quickly make the whole system work, I chose to not bother that. Therefore, the supported Codec 2 rate is from 1200 bps to 3200 bps.
+
+Other important changes are that where there is ```if(n)def ARM_MATH_CM4``` or ```if(n)def CORTEX_M4```, I added ```ARM_MATH_CM33``` and ```CORTEX_M33```. Especially, I added the code in `codec2_fft.h`:
+
+```C
+#ifdef ARM_MATH_CM33
+  #include "nrf9160.h"
+  #include "core_cm33.h"
+  #include "arm_math.h"
+  #include "arm_const_structs.h"
+#endif
+```
 
 ## Possible Improvement
+Currently, the application transmitter role saves the whole input audio, whose duration is 3s, in memory. Then it encodes and also saves the Codec 2 bits in memory. Next, the transmitter sends the Codec 2 bits to the receiver. The receiver also save the whole encoded audio bits in memory, and then decode.
+
+For live audio (streaming), the above pattern is not feasible. We need to encode the audio once a frame (320 uint16_t PCM data for 1200 bps, 160 uint16_t PCM data for 3200 bps) comes in. Then transmit the Codec 2 bits while receiving the next frame.
+
+The 8000 Hz sample rate means that 320 PCM data corresponds to 40 ms duration, and 160 PCM data corresponds to 20 ms. Moreover, these are the durations we can use to encode the frame. The UART can be set fast enough so that the transmission time can be omitted.
+
+If in 1200 bps mode, the encoding time is longer than 40 ms, then live stream is not possible. This then requires a faster clock frequency of the CPU.
+
 
 ## Reference
 - [A slightly modified old version of Codec 2 for STM32F4](https://github.com/x893/codec2)
