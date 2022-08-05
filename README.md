@@ -119,7 +119,7 @@ When using the Kconfig of the nRF connect extension for VS code, use `Save to fi
 ### Overlay
 In Details View, you can find the file `circuitdojo_feather_nrf9160_common.dts`, which contains all the peripheral settings.
 
-When we want to change, for example, UART1, we need to create an overlay file. If we didn't create it before, there will be a sign `No overlay files`. After click it, an empty overlay file will be generated.
+When we want to change, for example, UART1, we need to write the configuration into an overlay file. If we didn't create it before, there will be a sign `No overlay files`. After click it, an empty overlay file will be generated.
 
 ![picture 12](images/1659539944660.png)  
 
